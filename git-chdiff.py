@@ -96,7 +96,7 @@ def main(argv=None):
         
         # option processing
         for option, value in opts:
-            if option in ('--clean'):
+            if option == '--clean':
                 doClean = True
                 del(argv[argv.index(option)])
             if option in ('-h', '--help'):
@@ -159,7 +159,7 @@ def main(argv=None):
                         print(f'    git path: {gitFile}')
                     break
         except OSError as e:
-            print >>sys.stderr, 'Execution failed:', e
+            print('Execution failed:', e, file=sys.stderr)
         # shadow the requested version of the file to a temp file
         # so we have something to diff against
         tFile = None
@@ -184,7 +184,8 @@ def main(argv=None):
                                          tempDirectory)
                 if verbose:
                     print(f'    temp file: {tFile[1]}')
-                os.fdopen(tFile[0], 'w').write(''.join(lines))
+                with os.fdopen(tFile[0], 'w') as temp_fp:
+                    temp_fp.write(''.join(lines))
         except OSError as e:
             print('Execution failed:', e, file=sys.stderr)
         # now that we have the temp file we can diff it with the

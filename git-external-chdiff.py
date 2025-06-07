@@ -36,7 +36,7 @@ def main(argv=None):
         if wait:
             waitFlag = '--wait'
         if verbose:
-            print 'git-external-chdiff: comparing %s %s' % (oldFile, newFile)
+            print('git-external-chdiff: comparing %s %s' % (oldFile, newFile))
         p = subprocess.Popen('chdiff %s %s %s' % (waitFlag,
                                                   oldFile,
                                                   newFile),
@@ -47,8 +47,7 @@ def main(argv=None):
         p.wait()
         # ugh, this is sloppy, but we only know to clean up
         # if a chdiff wait is specified, so tidy up now
-    except OSError, e:
-        print >>sys.stderr, 'Execution failed:', e
-
+    except OSError as e:
+        print('Execution failed:', e, file=sys.stderr)
 if __name__ == '__main__':
     sys.exit(main())

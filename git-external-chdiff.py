@@ -4,50 +4,57 @@
 git-external-chdiff
 
 Created by Dan Weeks (dan [AT] danimal [DOT] org) on 2008-02-27.
-Released to the Public Domain.
+Refatorado em 2025 por [Seu Nome]
 """
-
 
 import sys
 import subprocess
 import os
 
-help_message = '''
-git-external-chdiff [old-file] [new-file]
+def parse_external_diff_args(argv):
+    """
+    Extrai os caminhos dos arquivos antigo e novo a partir dos argumentos
+    passados automaticamente pelo Git (via GIT_EXTERNAL_DIFF).
 
-display diffs of git files using the chdiff utility
-as a proxy for GIT_EXTERNAL_DIFF via git
-'''
+    Git envia os seguintes argumentos:
+    argv[0] - script
+    argv[1] - caminho do repositório
+    argv[2] - arquivo original (na revisão antiga)
+    argv[3] - número SHA antigo
+    argv[4] - caminho do repositório
+    argv[5] - arquivo modificado (no estado atual)
+    argv[6] - número SHA novo
+    """
+    try:
+        old_file = argv[2]
+        new_file = argv[5]
+        return old_file, new_file
+    except IndexError:
+        print("Erro: argumentos insuficientes fornecidos pelo Git.", file=sys.stderr)
+        sys.exit(1)
+
+def run_chdiff(old_file, new_file, wait=True, verbose=False):
+    """
+    Executa o utilitário chdiff para comparar dois arquivos.
+    """
+    wait_flag = '--wait' if wait else ''
+    command = ['chdiff', wait_flag, old_file, new_file]
+
+    if verbose:
+        print(f'Executando: {" ".join(command)}')
+
+    try:
+        subprocess.run(command, env=os.environ)
+    except FileNotFoundError:
+        print("Erro: 'chdiff' não encontrado no sistema.", file=sys.stderr)
+        sys.exit(1)
 
 def main(argv=None):
-    """
-    the basic work location
-    """
-    
-    # set up the defaults
-    wait = True
-    verbose = False
-    
-    # pull the file names from the args passed in via git
-    old_file = sys.argv[2]
-    new_file = sys.argv[5]
-    try:
-        wait_flag = ''
-        if wait:
-            wait_flag = '--wait'
-        if verbose:
-            print('git-external-chdiff: comparing %s %s' % (old_file, new_file))
-        p = subprocess.Popen('chdiff %s %s %s' % (wait_flag,
-                                                  old_file,
-                                                  new_file),
-                             env=os.environ,
-                             shell=True,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
-        p.wait()
-        # ugh, this is sloppy, but we only know to clean up
-        # if a chdiff wait is specified, so tidy up now
-    except OSError as e:
-        print('Execution failed:', e, file=sys.stderr)
+    if argv is None:
+        argv = sys.argv
+
+    old_file, new_file = parse_external_diff_args(argv)
+    run_chdiff(old_file, new_file, wait=True, verbose=False)
+
 if __name__ == '__main__':
-    sys.exit(main())
+    main()

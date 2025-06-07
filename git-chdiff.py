@@ -13,8 +13,8 @@ import subprocess
 import sys
 import tempfile
 
-import pwd
-import getpass
+# import pwd
+# import getpass
 
 HELP_MESSAGE = '''
 git-chdiff <opts> [file1, file2, ...]
@@ -37,6 +37,50 @@ class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg
 
+
+def parse_arguments(argv):
+    """
+    Lê os argumentos passados via linha de comando e organiza em um dicionário.
+    """
+    try:
+        # Define os argumentos válidos
+        opts, args = getopt.getopt(argv[1:], 'hr:wv', ['clean', 'help', 'revision=', 'wait', 'verbose'])
+    except getopt.error as msg:
+        # Em caso de erro no argumento, levanta exceção
+        raise Usage(msg)
+    
+    # Dicionário que armazena os valores das opções
+    options = {
+        'should_clean': False,     # Limpar arquivos temporários?
+        'revision': 'HEAD~0',      # Revisão a ser usada no Git
+        'wait': False,             # Esperar entre arquivos no chdiff
+        'verbose': False,          # Mostrar mensagens adicionais?
+        'file_names': []           # Lista de arquivos passados
+    }
+
+    # Processa cada opção capturada
+    for option, value in opts:
+        if option == '--clean':
+            options['should_clean'] = True
+        elif option in ('-h', '--help'):
+            raise Usage(HELP_MESSAGE)
+        elif option in ('-r', '--revision'):
+            options['revision'] = value
+        elif option in ('-w', '--wait'):
+            options['wait'] = True
+        elif option in ('-v', '--verbose'):
+            options['verbose'] = True
+
+    # Armazena os nomes dos arquivos no dicionário
+    options['file_names'] = argv[1:]
+    return options
+
+# Teste do codigo
+if __name__ == '__main__':
+    argumentos = parse_arguments(sys.argv)
+    print(argumentos)
+
+'''
 def clean_temp_files(verbose=False):
     """
     because we don't always wait for chdiff we can't always clean up
@@ -208,7 +252,7 @@ def main(argv=None):
                 os.unlink(temp_file[1])
         except OSError as e:
             print('Execution failed:', e, file=sys.stderr)
-
+            
 if __name__ == '__main__':
     sys.exit(main())
-    
+'''

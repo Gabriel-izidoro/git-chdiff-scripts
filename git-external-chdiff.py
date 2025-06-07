@@ -29,17 +29,17 @@ def main(argv=None):
     verbose = False
     
     # pull the file names from the args passed in via git
-    oldFile = sys.argv[2]
-    newFile = sys.argv[5]
+    old_file = sys.argv[2]
+    new_file = sys.argv[5]
     try:
-        waitFlag = ''
+        wait_flag = ''
         if wait:
-            waitFlag = '--wait'
+            wait_flag = '--wait'
         if verbose:
-            print('git-external-chdiff: comparing %s %s' % (oldFile, newFile))
-        p = subprocess.Popen('chdiff %s %s %s' % (waitFlag,
-                                                  oldFile,
-                                                  newFile),
+            print('git-external-chdiff: comparing %s %s' % (old_file, new_file))
+        p = subprocess.Popen('chdiff %s %s %s' % (wait_flag,
+                                                  old_file,
+                                                  new_file),
                              env=os.environ,
                              shell=True,
                              stdout=subprocess.PIPE,

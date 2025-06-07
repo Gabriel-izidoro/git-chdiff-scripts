@@ -16,7 +16,7 @@ import tempfile
 import pwd
 import getpass
 
-help_message = '''
+HELP_MESSAGE = '''
 git-chdiff <opts> [file1, file2, ...]
 
 display diffs of git files using the chdiff utility 
@@ -29,15 +29,15 @@ display diffs of git files using the chdiff utility
   --clean           clean any temp files that might have been left around
 '''
 
-tempFileSuffix = '.temp'
-tempFilePrefix = 'git-chdiff'
-tempDirectory = '/var/tmp'
+TEMP_FILE_SUFFIX = '.temp'
+TEMP_FILE_PREFIX = 'git-chdiff'
+TEMP_DIRECTORY = '/var/tmp'
 
 class Usage(Exception):
     def __init__(self, msg):
         self.msg = msg
 
-def cleanTempFiles(verbose=False):
+def clean_temp_files(verbose=False):
     """
     because we don't always wait for chdiff we can't always clean up
     the temp files we make.  This will wipe out all git-chdiff temp
@@ -47,24 +47,24 @@ def cleanTempFiles(verbose=False):
     try:
         if verbose:
             print('scanning for git-chdiff temp files to clean')
-        myUid = pwd.getpwnam(getpass.getuser())[2]
-        fileList = os.listdir(tempDirectory)
-        for fileName in fileList:
-            nFile = os.path.join(tempDirectory, fileName)
+        my_uid = pwd.getpwnam(getpass.getuser())[2]
+        files_in_tmp = os.listdir(TEMP_DIRECTORY)
+        for file_name in files_in_tmp:
+            normalized_file = os.path.join(TEMP_DIRECTORY, file_name)
             # skip directories
-            if not os.path.isfile(nFile):
+            if not os.path.isfile(normalized_file):
                 continue
             # skip anything not named right
-            if not fileName.startswith(tempFilePrefix):
+            if not file_name.startswith(TEMP_FILE_PREFIX):
                 continue
             # skip if it's not our file
-            if os.stat(nFile)[4] != myUid:
+            if os.stat(normalized_file)[4] != my_uid:
                 continue
             # if we're here we own the file and it's named correctly
             # remove it
             if verbose:
-                print('removing temp file: %s' % nFile)
-            os.unlink(nFile)
+                print('removing temp file: %s' % normalized_file)
+            os.unlink(normalized_file)
         return 0
     except Exception as e:
         if verbose:
@@ -77,7 +77,7 @@ def main(argv=None):
     """
     
     # set up the defaults
-    doClean = False
+    should_clean = False
     revision = 'HEAD~0' # get the previous commit
     wait = False
     verbose = False
@@ -97,10 +97,10 @@ def main(argv=None):
         # option processing
         for option, value in opts:
             if option == '--clean':
-                doClean = True
+                should_clean = True
                 del(argv[argv.index(option)])
             if option in ('-h', '--help'):
-                raise Usage(help_message)
+                raise Usage(HELP_MESSAGE)
             if option in ('-r', '--revision'):
                 revision = value
                 del(argv[argv.index(option)])
@@ -113,24 +113,24 @@ def main(argv=None):
                 del(argv[argv.index(option)])
     except Usage as err:
         print(f"{sys.argv[0].split('/')[-1]}: {err.msg}", file=sys.stderr)
-        print(help_message, file=sys.stderr)
+        print(HELP_MESSAGE, file=sys.stderr)
         return 2
     
-    if doClean:
-        return cleanTempFiles(verbose)
-    fileNames = argv[1:]
-    for fileName in fileNames:
-        nFile = os.path.normpath(fileName)
-        gitFile = nFile
+    if should_clean:
+        return clean_temp_files(verbose)
+    file_names = argv[1:]
+    for file_name in file_names:
+        normalized_file = os.path.normpath(file_name)
+        git_path = normalized_file
         if verbose:
-            print(f'-> working on {nFile}')
-        if not os.path.isfile(nFile):
+            print(f'-> working on {normalized_file}')
+        if not os.path.isfile(normalized_file):
             #if verbose:
-            print(f'{nFile} is not a file')
+            print(f'{normalized_file} is not a file')
             continue
         # make sure the file is in the git repository
         try:
-            p = subprocess.Popen('git status %s' % nFile, 
+            p = subprocess.Popen('git status %s' % normalized_file, 
                                  env=os.environ,
                                  shell=True,
                                  stdout=subprocess.PIPE, 
@@ -141,30 +141,30 @@ def main(argv=None):
                 # the file is probably not in the git repo
                 # or is not changed, let's find out
                 if lines[0].startswith('error:'):
-                    print(f'{nFile} not in git repository.....skipping')
+                    print(f'{normalized_file} not in git repository.....skipping')
                     continue
                 elif lines[0].startswith('# '):
                     # we're probably not changed
                     if verbose:
-                        print(f'    {nFile} unchanged.....skipping')
+                        print(f'    {normalized_file} unchanged.....skipping')
                     continue
             # our file is there, look for the full path to it
             for line in lines:
                 line = line.rstrip()
-                if line.endswith(nFile):
+                if line.endswith(normalized_file):
                     # split on the three spaces between 
                     #'modified:' and the file name
-                    gitFile = line.split('   ')[-1]
+                    git_path = line.split('   ')[-1]
                     if verbose:
-                        print(f'    git path: {gitFile}')
+                        print(f'    git path: {git_path}')
                     break
         except OSError as e:
             print('Execution failed:', e, file=sys.stderr)
         # shadow the requested version of the file to a temp file
         # so we have something to diff against
-        tFile = None
+        temp_file = None
         try:
-            p = subprocess.Popen('git show %s:%s' % (revision,gitFile), 
+            p = subprocess.Popen('git show %s:%s' % (revision,git_path), 
                                  env=os.environ,
                                  shell=True,
                                  stdout=subprocess.PIPE, 
@@ -174,29 +174,29 @@ def main(argv=None):
             # revision/tag isn't valid so we have to scan the output
             lines = p.stdout.readlines()
             if lines[0].startswith('fatal:') or lines[0].startswith('error:'):
-                print(f'problem getting revision {revision} of file {nFile}')
+                print(f'problem getting revision {revision} of file {normalized_file}')
                 print(f'    {lines[0]}')
                 continue
             else:
                 # save the file out
-                tFile = tempfile.mkstemp(tempFileSuffix, 
-                                         tempFilePrefix, 
-                                         tempDirectory)
+                temp_file = tempfile.mkstemp(TEMP_FILE_SUFFIX, 
+                                         TEMP_FILE_PREFIX, 
+                                         TEMP_DIRECTORY)
                 if verbose:
-                    print(f'    temp file: {tFile[1]}')
-                with os.fdopen(tFile[0], 'w') as temp_fp:
+                    print(f'    temp file: {temp_file[1]}')
+                with os.fdopen(temp_file[0], 'w') as temp_fp:
                     temp_fp.write(''.join(lines))
         except OSError as e:
             print('Execution failed:', e, file=sys.stderr)
         # now that we have the temp file we can diff it with the
         # current file in the repo
         try:
-            waitFlag = ''
+            wait_flag = ''
             if wait:
-                waitFlag = '--wait'
-            p = subprocess.Popen('chdiff %s %s %s' % (waitFlag,
-                                                      tFile[1],
-                                                      nFile),
+                wait_flag = '--wait'
+            p = subprocess.Popen('chdiff %s %s %s' % (wait_flag,
+                                                      temp_file[1],
+                                                      normalized_file),
                                  env=os.environ,
                                  shell=True,
                                  stdout=subprocess.PIPE,
@@ -205,9 +205,10 @@ def main(argv=None):
             # ugh, this is sloppy, but we only know to clean up
             # if a chdiff wait is specified, so tidy up now
             if wait:
-                os.unlink(tFile[1])
+                os.unlink(temp_file[1])
         except OSError as e:
             print('Execution failed:', e, file=sys.stderr)
 
 if __name__ == '__main__':
     sys.exit(main())
+    

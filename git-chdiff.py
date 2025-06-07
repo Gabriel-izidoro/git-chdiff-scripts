@@ -13,8 +13,8 @@ import subprocess
 import sys
 import tempfile
 
-# import pwd
-# import getpass
+import pwd
+import getpass
 
 HELP_MESSAGE = '''
 git-chdiff <opts> [file1, file2, ...]
@@ -89,21 +89,6 @@ def is_file_tracked_by_git(file_path):
         return result.returncode == 0
     except Exception:
         return False
-
-def is_file_tracked_by_git(file_path):
-    """
-    Verifica se o arquivo está sendo rastreado (versionado) pelo Git.
-    Retorna True se estiver, False caso contrário.
-    """
-    try:
-        # Executa o comando git para verificar se o arquivo existe no repositório
-        result = subprocess.run(['git', 'ls-files', '--error-unmatch', file_path],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                text=True)
-        return result.returncode == 0
-    except Exception:
-        return False
     
 def get_file_from_git_revision(revision, git_path):
     """
@@ -145,8 +130,60 @@ def run_chdiff(original_file, modified_file, wait=False):
     
     # Executa o comando com os arquivos passados
     subprocess.run(['chdiff', wait_flag, original_file, modified_file])
-    
-'''
+
+def main(argv=None):
+    # Se nenhum argumento for passado, usa os da linha de comando
+    if argv is None:
+        argv = sys.argv
+
+    try:
+        # Faz o parsing (leitura) dos argumentos da linha de comando
+        options = parse_arguments(argv)
+    except Usage as err:
+        # Se houver erro nos argumentos, mostra mensagem de uso
+        print(f"{sys.argv[0].split('/')[-1]}: {err.msg}", file=sys.stderr)
+        print(HELP_MESSAGE, file=sys.stderr)
+        return 2
+
+    # Se o usuário pediu para limpar os arquivos temporários
+    if options['should_clean']:
+        return clean_temp_file(options['verbose'])
+
+    # Para cada arquivo passado como argumento
+    for file_name in options['file_names']:
+        # Normaliza o caminho do arquivo (ex: ./arquivo.py → /caminho/absoluto/arquivo.py)
+        normalized_file = os.path.normpath(file_name)
+        git_path = normalized_file
+
+        if options['verbose']:
+            print(f'-> working on {normalized_file}')
+
+        # Verifica se o arquivo existe localmente
+        if not os.path.isfile(normalized_file):
+            print(f'{normalized_file} is not a file')
+            continue
+
+        # Verifica se o arquivo está versionado no Git
+        if not is_file_tracked_by_git(normalized_file):
+            print(f'{normalized_file} not in git repository.....skipping')
+            continue
+
+        # Tenta recuperar o conteúdo do arquivo na revisão anterior (ex: HEAD~0)
+        file_content = get_file_from_git_revision(options['revision'], git_path)
+        if not file_content:
+            print(f'problem getting revision {options["revision"]} of file {normalized_file}')
+            continue
+
+        # Cria um arquivo temporário com o conteúdo da revisão antiga
+        temp_file_path = create_temp_file(file_content, verbose=options['verbose'])
+
+        # Roda o chdiff para comparar o arquivo atual com o da revisão antiga
+        run_chdiff(temp_file_path, normalized_file, wait=options['wait'])
+
+        # Se o modo espera estiver ativado, remove o arquivo temporário após uso
+        if options['wait']:
+            os.unlink(temp_file_path)
+            
 def clean_temp_files(verbose=False):
     """
     because we don't always wait for chdiff we can't always clean up
@@ -181,6 +218,7 @@ def clean_temp_files(verbose=False):
             print('Clean failed:', e, file=sys.stderr)
         return 1
 
+''''
 def main(argv=None):
     """
     the basic work location

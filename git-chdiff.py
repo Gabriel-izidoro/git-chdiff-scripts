@@ -75,11 +75,77 @@ def parse_arguments(argv):
     options['file_names'] = argv[1:]
     return options
 
-# Teste do codigo
-if __name__ == '__main__':
-    argumentos = parse_arguments(sys.argv)
-    print(argumentos)
+def is_file_tracked_by_git(file_path):
+    """
+    Verifica se o arquivo está sendo rastreado (versionado) pelo Git.
+    Retorna True se estiver, False caso contrário.
+    """
+    try:
+        # Executa o comando git para verificar se o arquivo existe no repositório
+        result = subprocess.run(['git', 'ls-files', '--error-unmatch', file_path],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True)
+        return result.returncode == 0
+    except Exception:
+        return False
 
+def is_file_tracked_by_git(file_path):
+    """
+    Verifica se o arquivo está sendo rastreado (versionado) pelo Git.
+    Retorna True se estiver, False caso contrário.
+    """
+    try:
+        # Executa o comando git para verificar se o arquivo existe no repositório
+        result = subprocess.run(['git', 'ls-files', '--error-unmatch', file_path],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True)
+        return result.returncode == 0
+    except Exception:
+        return False
+    
+def get_file_from_git_revision(revision, git_path):
+    """
+    Recupera o conteúdo de um arquivo em uma determinada revisão do Git.
+    Retorna o conteúdo como string, ou None se falhar.
+    """
+    try:
+        result = subprocess.run(['git', 'show', f'{revision}:{git_path}'],
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True)
+        if result.returncode == 0:
+            return result.stdout
+        return None
+    except Exception:
+        return None
+    
+def create_temp_file(content, verbose=False):
+    """
+    Cria um arquivo temporário com o conteúdo da revisão antiga.
+    Retorna o caminho para o arquivo criado.
+    """
+    temp_file = tempfile.mkstemp(TEMP_FILE_SUFFIX, TEMP_FILE_PREFIX, TEMP_DIRECTORY)
+    if verbose:
+        print(f'    temp file: {temp_file[1]}')
+    
+    # Escreve o conteúdo no arquivo temporário
+    with os.fdopen(temp_file[0], 'w') as temp_fp:
+        temp_fp.write(content)
+
+    return temp_file[1]
+
+def run_chdiff(original_file, modified_file, wait=False):
+    """
+    Executa o comando chdiff para comparar dois arquivos.
+    """
+    # Se o modo "espera" estiver ativado, adiciona o argumento --wait
+    wait_flag = '--wait' if wait else ''
+    
+    # Executa o comando com os arquivos passados
+    subprocess.run(['chdiff', wait_flag, original_file, modified_file])
+    
 '''
 def clean_temp_files(verbose=False):
     """

@@ -13,6 +13,9 @@ import subprocess
 import sys
 import tempfile
 
+import pwd
+import getpass
+
 help_message = '''
 git-chdiff <opts> [file1, file2, ...]
 
@@ -40,11 +43,10 @@ def cleanTempFiles(verbose=False):
     the temp files we make.  This will wipe out all git-chdiff temp
     files owned by us.
     """
-    import pwd
-    import getpass
+
     try:
         if verbose:
-            print 'scanning for git-chdiff temp files to clean'
+            print('scanning for git-chdiff temp files to clean')
         myUid = pwd.getpwnam(getpass.getuser())[2]
         fileList = os.listdir(tempDirectory)
         for fileName in fileList:
@@ -61,12 +63,12 @@ def cleanTempFiles(verbose=False):
             # if we're here we own the file and it's named correctly
             # remove it
             if verbose:
-                print 'removing temp file: %s' % nFile
+                print('removing temp file: %s' % nFile)
             os.unlink(nFile)
         return 0
-    except Exception, e:
+    except Exception as e:
         if verbose:
-            print >>sys.stderr, 'Clean failed:', e
+            print('Clean failed:', e, file=sys.stderr)
         return 1
 
 def main(argv=None):
@@ -89,7 +91,7 @@ def main(argv=None):
                                                           'revision=',
                                                           'wait',
                                                           'verbose'])
-        except getopt.error, msg:
+        except getopt.error as msg:
             raise Usage(msg)
         
         # option processing
@@ -109,9 +111,9 @@ def main(argv=None):
             if option in ('-v', '--verbose'):
                 verbose = True
                 del(argv[argv.index(option)])
-    except Usage, err:
-        print >> sys.stderr, sys.argv[0].split('/')[-1] + ': ' + str(err.msg)
-        print >> sys.stderr, help_message
+    except Usage as err:
+        print(f"{sys.argv[0].split('/')[-1]}: {err.msg}", file=sys.stderr)
+        print(help_message, file=sys.stderr)
         return 2
     
     if doClean:
@@ -121,10 +123,10 @@ def main(argv=None):
         nFile = os.path.normpath(fileName)
         gitFile = nFile
         if verbose:
-            print '-> working on %s' % nFile
+            print(f'-> working on {nFile}')
         if not os.path.isfile(nFile):
             #if verbose:
-            print '%s is not a file' % nFile
+            print(f'{nFile} is not a file')
             continue
         # make sure the file is in the git repository
         try:
@@ -139,12 +141,12 @@ def main(argv=None):
                 # the file is probably not in the git repo
                 # or is not changed, let's find out
                 if lines[0].startswith('error:'):
-                    print '%s not in git repository.....skipping' % nFile
+                    print(f'{nFile} not in git repository.....skipping')
                     continue
                 elif lines[0].startswith('# '):
                     # we're probably not changed
                     if verbose:
-                        print '    %s unchanged.....skipping' % nFile
+                        print(f'    {nFile} unchanged.....skipping')
                     continue
             # our file is there, look for the full path to it
             for line in lines:
@@ -154,9 +156,9 @@ def main(argv=None):
                     #'modified:' and the file name
                     gitFile = line.split('   ')[-1]
                     if verbose:
-                        print '    git path: %s' % gitFile
+                        print(f'    git path: {gitFile}')
                     break
-        except OSError, e:
+        except OSError as e:
             print >>sys.stderr, 'Execution failed:', e
         # shadow the requested version of the file to a temp file
         # so we have something to diff against
@@ -172,9 +174,8 @@ def main(argv=None):
             # revision/tag isn't valid so we have to scan the output
             lines = p.stdout.readlines()
             if lines[0].startswith('fatal:') or lines[0].startswith('error:'):
-                print 'problem getting revision %s of file %s' % (revision,
-                                                                  nFile)
-                print '    %s' % lines[0]
+                print(f'problem getting revision {revision} of file {nFile}')
+                print(f'    {lines[0]}')
                 continue
             else:
                 # save the file out
@@ -182,10 +183,10 @@ def main(argv=None):
                                          tempFilePrefix, 
                                          tempDirectory)
                 if verbose:
-                    print '    temp file: %s' % tFile[1]
+                    print(f'    temp file: {tFile[1]}')
                 os.fdopen(tFile[0], 'w').write(''.join(lines))
-        except OSError, e:
-            print >>sys.stderr, 'Execution failed:', e
+        except OSError as e:
+            print('Execution failed:', e, file=sys.stderr)
         # now that we have the temp file we can diff it with the
         # current file in the repo
         try:
@@ -204,8 +205,8 @@ def main(argv=None):
             # if a chdiff wait is specified, so tidy up now
             if wait:
                 os.unlink(tFile[1])
-        except OSError, e:
-            print >>sys.stderr, 'Execution failed:', e
+        except OSError as e:
+            print('Execution failed:', e, file=sys.stderr)
 
 if __name__ == '__main__':
     sys.exit(main())

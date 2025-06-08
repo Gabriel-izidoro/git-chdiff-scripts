@@ -5,6 +5,7 @@ git-chdiff
 
 Created by Dan Weeks (dan [AT] danimal [DOT] org) on 2008-02-20.
 Released to the Public Domain.
+Refatorado em 2025 por Gabriel Izidoro, João Victor.
 """
 
 import getopt
@@ -186,9 +187,9 @@ def main(argv=None):
             
 def clean_temp_files(verbose=False):
     """
-    because we don't always wait for chdiff we can't always clean up
-    the temp files we make.  This will wipe out all git-chdiff temp
-    files owned by us.
+    Como nem sempre esperamos pelo comando chdiff, nem sempre podemos limpar
+    os arquivos temporários que criamos. Isso apagará todos os arquivos temporários
+    do git-chdiff que possuímos.
     """
 
     try:
@@ -198,17 +199,17 @@ def clean_temp_files(verbose=False):
         files_in_tmp = os.listdir(TEMP_DIRECTORY)
         for file_name in files_in_tmp:
             normalized_file = os.path.join(TEMP_DIRECTORY, file_name)
-            # skip directories
+            # pula diretórios
             if not os.path.isfile(normalized_file):
                 continue
-            # skip anything not named right
+            # pula qualquer coisa que não esteja nomeada corretamente
             if not file_name.startswith(TEMP_FILE_PREFIX):
                 continue
-            # skip if it's not our file
+            # pula se não for nosso arquivo
             if os.stat(normalized_file)[4] != my_uid:
                 continue
-            # if we're here we own the file and it's named correctly
-            # remove it
+            # se estivermos aqui, somos donos do arquivo e ele está nomeado corretamente
+            # remova-o
             if verbose:
                 print('removing temp file: %s' % normalized_file)
             os.unlink(normalized_file)
